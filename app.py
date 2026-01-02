@@ -277,16 +277,13 @@ def create_metadata_content(prompt, enhanced_prompt, seed, steps, cfg_scale, wid
     
     return f"""Generated Image Metadata
 ======================
-Model: Kageillustrious v6.0NL XL
 Timestamp: {timestamp}
 Original Prompt: {prompt}
-Enhanced Prompt: {enhanced_prompt}
 Seed: {seed}
 Steps: {steps}
 CFG Scale: {cfg_scale}
 Dimensions: {width}x{height}
 Style: {style}
-LoRA: {lora_info if lora_info else "None"}
 """
 
 def cleanup_pipeline():
@@ -619,17 +616,16 @@ css = """
 
 # ===== 创建UI =====
 def create_interface():
-    with gr.Blocks(css=css, title="Kageillustrious AI Image Generator") as interface:
+    with gr.Blocks(css=css, title="ADULT AI Image Generator (YAOI Friendly)") as interface:
         with gr.Column(elem_classes=["main-content"]):
-            gr.HTML('<div class="title">🎨 Kageillustrious AI Image Generator</div>')
-            gr.HTML('<div class="model-info">📦 Model: Kageillustrious v6.0NL XL (Illustrious-based SDXL)</div>')
+            gr.HTML('<div class="title">🎨 ADULT AI Image Generator (YAOI Friendly)</div>')
             gr.HTML('<div class="warning-box">⚠️ 18+ CONTENT WARNING ⚠️</div>')
             
             with gr.Row():
                 with gr.Column(scale=2):
                     prompt_input = gr.Textbox(
                         label="Detailed Prompt (Use Danbooru tags style)",
-                        placeholder="1girl, solo, long hair, blue eyes, detailed face, beautiful...",
+                        placeholder="1boy, solo, messy hair, blue eyes, detailed face, handsome...",
                         lines=15,
                         elem_classes=["prompt-box"]
                     )
@@ -780,7 +776,7 @@ def create_interface():
 # ===== 启动应用 =====
 if __name__ == "__main__":
     print("\n" + "="*50)
-    print("🚀 Starting Kageillustrious Image Generator")
+    print("🚀 Starting ADULT AI Image Generator (YAOI Friendly) ")
     print("="*50)
     print(f"📦 Model: {FIXED_MODEL_REPO}")
     print(f"📄 Model File: {FIXED_MODEL_FILE}")
