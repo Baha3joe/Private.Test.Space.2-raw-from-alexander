@@ -36,8 +36,8 @@ STYLE_KEYWORDS = {
         "suffix": ""
     },
     "Standard Quality": {
-        "prefix": "(RAW photo:1.3), (photorealistic:1.4), (hyperrealistic:1.3), 8k uhd, (ultra realistic skin texture:1.2), cinematic lighting, vibrant colors, masterpiece, realistic skin texture, detailed anatomy, professional photography",
-        "suffix": "sharp focus, (everything in focus:1.3), (no bokeh:1.2), realistic skin texture, subsurface scattering, detailed anatomy, (perfect anatomy:1.2), detailed face, detailed background, lifelike, professional photography, realistic proportions, (detailed face:1.1), natural pose, expressive eyes, 8k resolution"
+        "prefix": "(RAW photo:1.3), (photorealistic:1.4), (hyperrealistic:1.3), 8k uhd, (ultra realistic skin texture:1.2), cinematic lighting, vibrant colors,masterpiece, realistic skin texture, detailed anatomy, professional photography",
+        "suffix": "sharp focus, (everything in focus:1.3), (no bokeh:1.2), realistic skin texture, subsurface scattering, detailed anatomy, (perfect anatomy:1.2),detailed face, detailed background, lifelike, professional photography, realistic proportions,  (detailed face:1.1), natural pose,expressive eyes, 8k resolution"
     },
     "High Detail": {
         "prefix": "masterpiece, best quality, amazing quality, very aesthetic, high resolution, ultra-detailed, absurdres, newest, colorful, rim light, backlit, highest detailed",
@@ -58,7 +58,7 @@ STYLE_KEYWORDS = {
 }
 
 # 通用质量增强词
-QUALITY_TAGS = "very awa"
+QUALITY_TAGS = "very awa, masterpiece, best quality, high resolution, highly detailed, professional"
 
 # 修改为Kageillustrious模型 - 使用from_single_file加载
 FIXED_MODEL_REPO = "PutiLeslie/kageillustrious_v60NLXLVersion"
@@ -67,9 +67,9 @@ FIXED_MODEL_FILE = "kageillustrious_v60NLXLVersion.safetensors"
 # LoRA 配置 - 保留原有的LoRA(可能需要测试兼容性)
 LORA_CONFIGS = [
     {
-        "repo_id": "OedoSoldier/detail-tweaker-lora",
-        "weight_name": "add_detail.safetensors",
-        "adapter_name": "detail-tweaker-lora",
+        "repo_id": "artificialguybr/LogoRedmond-LogoLoraForSDXL-V2",
+        "weight_name": "LogoRedAF.safetensors",
+        "adapter_name": "logo_lora",
         "scale": 0.8
     }
 ]
@@ -787,7 +787,7 @@ if __name__ == "__main__":
     print(f"⚡ ZeroGPU: {'Enabled' if SPACES_AVAILABLE else 'Disabled'}")
     print(f"📝 Compel: {'Available' if COMPEL_AVAILABLE else 'Not Available'}")
     if LORA_CONFIGS:
-        print(f"🎨 LoRA: detail-tweaker-lora (scale: {LORA_CONFIGS[0].get('scale', 0.8)})")
+        print(f"🎨 LoRA: LogoRedmond-LogoLoraForSDXL-V2 (scale: {LORA_CONFIGS[0].get('scale', 0.8)})")
     print("="*50 + "\n")
     
     # 不预加载模型,让ZeroGPU按需分配
