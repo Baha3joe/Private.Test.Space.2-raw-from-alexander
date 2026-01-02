@@ -232,6 +232,7 @@ def build_negative_prompt(style: str, custom_negative: str = "") -> str:
     
     # 风格特定的负面词
     style_negatives = {
+        "Standard Quality": ", (cartoon:1.3), (anime:1.3), (3d render:1.2), (illustration:1.2), (painting:1.2), (drawing:1.2), (art:1.2), (sketch:1.2), artificial, unrealistic, (depth of field:1.2), (bokeh:1.2)",
         "Realistic": ", (cartoon:1.3), (anime:1.3), (3d render:1.2), (illustration:1.2)",
         "Anime": ", (realistic:1.3), (photorealistic:1.3), (photo:1.2)",
         "Artistic": ", (photo:1.2), (photorealistic:1.2)"
