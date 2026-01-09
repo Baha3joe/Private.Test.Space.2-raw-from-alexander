@@ -616,9 +616,9 @@ css = """
 
 # ===== 创建UI =====
 def create_interface():
-    with gr.Blocks(css=css, title="ADULT AI Image Generator (YAOI Friendly)") as interface:
+    with gr.Blocks(css=css, title="ADULT AI Image Generator") as interface:
         with gr.Column(elem_classes=["main-content"]):
-            gr.HTML('<div class="title">🎨 ADULT AI Image Generator (YAOI Friendly)</div>')
+            gr.HTML('<div class="title">🎨 ADULT AI Image Generator</div>')
             gr.HTML('<div class="warning-box">⚠️ 18+ CONTENT WARNING ⚠️</div>')
             
             with gr.Row():
