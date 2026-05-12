@@ -1,7 +1,5 @@
 # ===== Core ML Stack =====
-# 使用PyTorch 2.x以获得更好的性能
-torch==2.11.0
-torchvision==0.20.1
+# torch 和 torchvision 由 ZeroGPU 自动管理，不要写死版本
 
 # Stable Diffusion + LoRA
 diffusers==0.31.0
@@ -11,22 +9,15 @@ safetensors==0.4.5
 peft==0.13.2
 compel==2.0.3
 
-# huggingface_hub版本必须<1.0以兼容transformers 4.46.3
-# 使用稳定版本避免版本冲突
+# huggingface_hub 版本必须 <1.0 以兼容 transformers 4.46.3
 huggingface-hub>=0.23.2,<1.0
 
-# Gradio Interface
-gradio==5.5.0
-spaces==0.30.3
+# Gradio 和 spaces 由 ZeroGPU 自动管理，不要写死版本
 
 # Core Utilities
 Pillow==11.0.0
 numpy==1.26.4
 python-dateutil==2.9.0.post0
-
-# Optional: xFormers for additional memory optimization
-# 如果环境支持，取消注释以下行
-# xformers==0.0.28.post2
 
 # For logging / error handling
 requests==2.32.3
