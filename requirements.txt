@@ -1,6 +1,6 @@
 # ===== Core ML Stack =====
 # 使用PyTorch 2.x以获得更好的性能
-torch==2.5.1
+torch==2.11.0
 torchvision==0.20.1
 
 # Stable Diffusion + LoRA
