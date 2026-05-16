@@ -159,6 +159,7 @@ def initialize_model(model_filename: str):
         print(f"🖥️ Using device: {device}")
         print(f"📦 Loading local model from: {model_path}")
 
+        tried_low_mem = False
         try:
             pipeline = StableDiffusionXLPipeline.from_single_file(
                 model_path,
@@ -169,14 +170,52 @@ def initialize_model(model_filename: str):
             )
             print("✅ Loaded model as SDXL pipeline")
         except Exception as xlp_error:
-            print(f"⚠️ SDXL load failed, trying standard Stable Diffusion: {xlp_error}")
-            pipeline = StableDiffusionPipeline.from_single_file(
-                model_path,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                safety_checker=None,
-                requires_safety_checker=False
-            )
-            print("✅ Loaded model as standard Stable Diffusion pipeline")
+            print(f"⚠️ SDXL load failed: {xlp_error}")
+            # Try a low-memory loading strategy if available
+            try:
+                print("ℹ️ Attempting low-memory load (may use device mapping / lower precision)...")
+                tried_low_mem = True
+                pipeline = StableDiffusionXLPipeline.from_single_file(
+                    model_path,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    use_safetensors=True,
+                    safety_checker=None,
+                    requires_safety_checker=False,
+                    low_cpu_mem_usage=True
+                )
+                print("✅ Loaded SDXL pipeline with low-memory options")
+            except Exception as lowmem_err:
+                print(f"⚠️ Low-memory SDXL load failed: {lowmem_err}")
+                try:
+                    print("ℹ️ Falling back to standard Stable Diffusion loader")
+                    pipeline = StableDiffusionPipeline.from_single_file(
+                        model_path,
+                        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                        safety_checker=None,
+                        requires_safety_checker=False
+                    )
+                    print("✅ Loaded model as standard Stable Diffusion pipeline")
+                except Exception as sd_err:
+                    print(f"⚠️ Standard SD load failed: {sd_err}")
+                    # Try low-memory for standard pipeline
+                    try:
+                        if not tried_low_mem:
+                            pipeline = StableDiffusionPipeline.from_single_file(
+                                model_path,
+                                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                                safety_checker=None,
+                                requires_safety_checker=False,
+                                low_cpu_mem_usage=True
+                            )
+                            print("✅ Loaded standard pipeline with low-memory options")
+                    except Exception as final_err:
+                        print(f"❌ Model loading error: {final_err}")
+                        # Detect common low-memory / paging-file errors and provide guidance
+                        err_msg = str(final_err).lower()
+                        if "paging file" in err_msg or "memoryerror" in err_msg or "out of memory" in err_msg:
+                            print("❗ Model is too large to load on the current machine (CPU memory / paging file insufficient).")
+                            print("Suggestions: 1) Use a GPU with more VRAM; 2) Increase Windows virtual memory (page file); 3) Use a smaller model (.safetensors/.ckpt); 4) Run with `low_cpu_mem_usage=True` or enable device mapping via accelerate.)")
+                        return False
 
         if hasattr(pipeline, 'scheduler'):
             pipeline.scheduler = EulerDiscreteScheduler.from_config(

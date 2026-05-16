@@ -1,0 +1,20 @@
+2026-05-16 18:29:52.087943: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-05-16 18:30:00.633376: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+ΓÜá∩╕Å Spaces not available - running in regular mode
+Γ£à Compel available for long prompt processing
+Using model: ass-ripple-also-known-.safetensors
+≡ƒûÑ∩╕Å Using device: cpu
+≡ƒôª Loading local model from: G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors
+ΓÜá∩╕Å SDXL load failed: Unable to load weights from checkpoint file for 'G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors' at 'G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors'. 
+Γä╣∩╕Å Attempting low-memory load (may use device mapping / lower precision)...
+ΓÜá∩╕Å Low-memory SDXL load failed: Unable to load weights from checkpoint file for 'G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors' at 'G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors'. 
+Γä╣∩╕Å Falling back to standard Stable Diffusion loader
+ΓÜá∩╕Å Standard SD load failed: Unable to load weights from checkpoint file for 'G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors' at 'G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion\ass-ripple-also-known-.safetensors'. 
+Γ¥î Model loading error: 'NoneType' object has no attribute 'to'
+Traceback (most recent call last):
+  File "C:\Users\LAPTOP_PC\Desktop\New Folder\Raw_Alexander\app.py", line 226, in initialize_model
+    pipeline = pipeline.to(device)
+               ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'to'
+
+Failed to initialize model
