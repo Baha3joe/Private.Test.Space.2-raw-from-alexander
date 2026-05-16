@@ -255,6 +255,19 @@ def initialize_model(model_filename: str):
 
         pipeline = pipeline.to(device)
 
+        # Ensure tokenizers / text encoders exist (some single-file checkpoints may not populate both)
+        try:
+            if not getattr(pipeline, 'tokenizer', None) and getattr(pipeline, 'tokenizer_2', None):
+                pipeline.tokenizer = pipeline.tokenizer_2
+            if not getattr(pipeline, 'tokenizer_2', None) and getattr(pipeline, 'tokenizer', None):
+                pipeline.tokenizer_2 = pipeline.tokenizer
+            if not getattr(pipeline, 'text_encoder', None) and getattr(pipeline, 'text_encoder_2', None):
+                pipeline.text_encoder = pipeline.text_encoder_2
+            if not getattr(pipeline, 'text_encoder_2', None) and getattr(pipeline, 'text_encoder', None):
+                pipeline.text_encoder_2 = pipeline.text_encoder
+        except Exception:
+            pass
+
         # 加载 LoRA
         print("🎨 Loading LoRA models...")
         adapter_names = []
@@ -295,11 +308,23 @@ def initialize_model(model_filename: str):
 
         if COMPEL_AVAILABLE:
             try:
+                tokenizers = [getattr(pipeline, 'tokenizer', None), getattr(pipeline, 'tokenizer_2', None)]
+                text_encoders = [getattr(pipeline, 'text_encoder', None), getattr(pipeline, 'text_encoder_2', None)]
+                tokenizers = [t for t in tokenizers if t is not None]
+                text_encoders = [t for t in text_encoders if t is not None]
+                if len(tokenizers) == 0 or len(text_encoders) == 0:
+                    raise Exception("missing tokenizer or text_encoder for Compel")
+
+                # Compel historically accepted lists for multi-encoder models; use lists only when both available
+                tok_arg = tokenizers if len(tokenizers) > 1 else tokenizers[0]
+                te_arg = text_encoders if len(text_encoders) > 1 else text_encoders[0]
+                requires_pooled = [False, True] if isinstance(tok_arg, list) and isinstance(te_arg, list) and len(tok_arg) > 1 else [False]
+
                 compel_processor = Compel(
-                    tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
-                    text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
+                    tokenizer=tok_arg,
+                    text_encoder=te_arg,
                     returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                    requires_pooled=[False, True],
+                    requires_pooled=requires_pooled,
                     truncate_long_prompts=False
                 )
                 print("✅ Compel processor initialized")
