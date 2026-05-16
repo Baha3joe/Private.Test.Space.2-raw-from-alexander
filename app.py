@@ -672,7 +672,7 @@ css = """
 
 # ===== 创建UI =====
 def create_interface():
-    with gr.Blocks(css=css, title="ADULT AI Image Generator") as interface:
+    with gr.Blocks(title="ADULT AI Image Generator") as interface:
         with gr.Column(elem_classes=["main-content"]):
             gr.HTML('<div class="title">🎨 ADULT AI Image Generator</div>')
             gr.HTML('<div class="warning-box">⚠️ 18+ CONTENT WARNING ⚠️</div>')
@@ -846,7 +846,7 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("🚀 Starting ADULT AI Image Generator (YAOI Friendly) ")
     print("="*50)
-    print(f"� Local model directory: {LOCAL_MODEL_DIRECTORY}")
+    print(f"📂 Local model directory: {LOCAL_MODEL_DIRECTORY}")
     print(f"📄 Available local models: {', '.join(LOCAL_MODEL_CHOICES) if LOCAL_MODEL_CHOICES else 'NONE FOUND'}")
     print(f"🖥️ Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
     print(f"⚡ ZeroGPU: {'Enabled' if SPACES_AVAILABLE else 'Disabled'}")
@@ -861,5 +861,9 @@ if __name__ == "__main__":
     app = create_interface()
     app.queue(max_size=10, default_concurrency_limit=2)
     
-    app.launch(server_name="0.0.0.0",
-        server_port=7860, share=True)
+    app.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=True,
+        css=css
+    )
