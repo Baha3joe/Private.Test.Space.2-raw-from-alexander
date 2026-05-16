@@ -1,0 +1,28 @@
+⚠️ Spaces not available - running in regular mode
+2026-05-16 17:45:18.175228: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-05-16 17:46:31.210179: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+✅ Compel available for long prompt processing
+
+==================================================
+🚀 Starting ADULT AI Image Generator (YAOI Friendly) 
+==================================================
+� Local model directory: G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion
+📄 Available local models: Cartoonish.safetensors, add-micro-details-concept-illustrious-or-pony-or-noobai.safetensors, ass-ripple-also-known-.safetensors, kageillustrious_v60NLXLVersion.safetensors, nova-anime-xl.safetensors, nova-furry-xl.safetensors, nova-orange-xl.safetensors, novaAnimeXL.safetensors, ntrnetorare.safetensors, ramthrusts-nsfw-pink-alchemy-mix.safetensors, wai-illustrious-sdxl.safetensors
+🖥️ Device: CPU
+⚡ ZeroGPU: Disabled
+📝 Compel: Available
+🎨 LoRA: LogoRedmond-LogoLoraForSDXL-V2 (scale: 0.8)
+==================================================
+
+c:\Users\LAPTOP_PC\Desktop\New Folder\Raw_Alexander\app.py:675: UserWarning: The parameters have been moved from the Blocks constructor to the launch() method in Gradio 6.0: css. Please pass these parameters to launch() instead.
+  with gr.Blocks(css=css, title="ADULT AI Image Generator") as interface:
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 7860): only one usage of each socket address (protocol/network address/port) is normally permitted
+Traceback (most recent call last):
+  File "c:\Users\LAPTOP_PC\Desktop\New Folder\Raw_Alexander\app.py", line 864, in <module>
+    app.launch(server_name="0.0.0.0",
+  File "C:\Users\LAPTOP_PC\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\blocks.py", line 2774, in launch
+    ) = http_server.start_server(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\LAPTOP_PC\AppData\Local\Programs\Python\Python311\Lib\site-packages\gradio\http_server.py", line 182, in start_server
+    raise OSError(
+OSError: Cannot find empty port in range: 7860-7860. You can specify a different port by setting the GRADIO_SERVER_PORT environment variable or passing the `server_port` parameter to `launch()`.

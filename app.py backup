@@ -1,10 +1,3 @@
-import sys
-
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8")
-
 # ===== 必须首先导入spaces =====
 try:
     import spaces
@@ -21,15 +14,10 @@ from datetime import datetime
 import random
 import torch
 import gradio as gr
-from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, EulerDiscreteScheduler
+from diffusers import StableDiffusionXLPipeline, EulerDiscreteScheduler
 from PIL import Image
 import traceback
 import numpy as np
-
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8")
 
 # ===== 长提示词处理 =====
 try:
@@ -72,29 +60,9 @@ STYLE_KEYWORDS = {
 # 通用质量增强词
 QUALITY_TAGS = "very awa, masterpiece, best quality, high resolution, highly detailed, professional"
 
-# 本地模型目录 - 只使用本机或挂载盘中的 safetensors
-LOCAL_MODEL_DIRECTORY = os.environ.get(
-    "LOCAL_SD_MODEL_DIR",
-    r"G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion"
-)
-SUPPORTED_MODEL_EXTENSIONS = [".safetensors", ".ckpt"]
-
-current_model_name = None
-current_model_path = None
-
-# 本地模型扫描
-
-def get_local_models():
-    if not os.path.isdir(LOCAL_MODEL_DIRECTORY):
-        return []
-    return sorted(
-        [
-            filename for filename in os.listdir(LOCAL_MODEL_DIRECTORY)
-            if os.path.splitext(filename)[1].lower() in SUPPORTED_MODEL_EXTENSIONS
-        ]
-    )
-
-LOCAL_MODEL_CHOICES = get_local_models()
+# 修改为Kageillustrious模型 - 使用from_single_file加载
+FIXED_MODEL_REPO = "PutiLeslie/kageillustrious_v60NLXLVersion"
+FIXED_MODEL_FILE = "kageillustrious_v60NLXLVersion.safetensors"
 
 # LoRA 配置 - 保留原有的LoRA(可能需要测试兼容性)
 LORA_CONFIGS = [
@@ -115,65 +83,53 @@ compel_processor = None
 device = None
 model_loaded = False
 
-def initialize_model(model_filename: str):
-    """优化的模型初始化 - 从本地 safetensors 文件加载模型"""
-    global pipeline, compel_processor, device, model_loaded, current_model_name, current_model_path
-
-    if not model_filename:
-        print("❌ No model selected")
-        return False
-
-    model_path = os.path.join(LOCAL_MODEL_DIRECTORY, model_filename)
-    if not os.path.isfile(model_path):
-        print(f"❌ Model file not found: {model_path}")
-        return False
-
-    if model_loaded and pipeline is not None and model_filename == current_model_name:
-        print(f"✅ Model already loaded: {current_model_name}")
+def initialize_model():
+    """优化的模型初始化 - 使用from_single_file加载Kageillustrious"""
+    global pipeline, compel_processor, device, model_loaded
+    
+    if model_loaded and pipeline is not None:
+        print("✅ Model already loaded, skipping initialization")
         return True
-
-    if pipeline is not None and model_filename != current_model_name:
-        cleanup_pipeline()
-        pipeline = None
-        model_loaded = False
-
+    
     try:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"🖥️ Using device: {device}")
-        print(f"📦 Loading local model from: {model_path}")
-
-        try:
-            pipeline = StableDiffusionXLPipeline.from_single_file(
-                model_path,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                use_safetensors=True,
-                safety_checker=None,
-                requires_safety_checker=False
-            )
-            print("✅ Loaded model as SDXL pipeline")
-        except Exception as xlp_error:
-            print(f"⚠️ SDXL load failed, trying standard Stable Diffusion: {xlp_error}")
-            pipeline = StableDiffusionPipeline.from_single_file(
-                model_path,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                safety_checker=None,
-                requires_safety_checker=False
-            )
-            print("✅ Loaded model as standard Stable Diffusion pipeline")
-
-        if hasattr(pipeline, 'scheduler'):
-            pipeline.scheduler = EulerDiscreteScheduler.from_config(
-                pipeline.scheduler.config,
-                timestep_spacing="trailing"
-            )
-
+        
+        print(f"📦 Loading Kageillustrious model from: {FIXED_MODEL_REPO}")
+        
+        # 使用from_single_file加载单个safetensors文件
+        from huggingface_hub import hf_hub_download
+        
+        # 下载模型文件
+        model_path = hf_hub_download(
+            repo_id=FIXED_MODEL_REPO,
+            filename=FIXED_MODEL_FILE
+        )
+        
+        print(f"📥 Model downloaded to: {model_path}")
+        
+        # 使用from_single_file加载
+        pipeline = StableDiffusionXLPipeline.from_single_file(
+            model_path,
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+            use_safetensors=True,
+            safety_checker=None,
+            requires_safety_checker=False
+        )
+        
+        # 优化调度器 - 使用Euler适合Illustrious系列
+        pipeline.scheduler = EulerDiscreteScheduler.from_config(
+            pipeline.scheduler.config,
+            timestep_spacing="trailing"
+        )
+        
         pipeline = pipeline.to(device)
-
+        
         # 加载 LoRA
         print("🎨 Loading LoRA models...")
         adapter_names = []
         adapter_scales = []
-
+        
         for lora_config in LORA_CONFIGS:
             try:
                 pipeline.load_lora_weights(
@@ -186,27 +142,36 @@ def initialize_model(model_filename: str):
                 print(f"✅ LoRA loaded: {lora_config['adapter_name']} (scale: {lora_config.get('scale', 0.8)})")
             except Exception as lora_error:
                 print(f"⚠️ Failed to load LoRA {lora_config['adapter_name']}: {lora_error}")
-
+        
+        # 设置 LoRA 强度
         if adapter_names:
             try:
                 pipeline.set_adapters(adapter_names, adapter_weights=adapter_scales)
                 print(f"✅ LoRA adapters activated with scales: {adapter_scales}")
             except Exception as e:
                 print(f"⚠️ Failed to set adapter scales: {e}")
-
+        
+        # GPU优化 - 适配ZeroGPU环境
         if torch.cuda.is_available():
             try:
+                # VAE优化
                 pipeline.enable_vae_slicing()
                 pipeline.enable_vae_tiling()
+                
+                # 尝试启用xformers
                 try:
                     pipeline.enable_xformers_memory_efficient_attention()
                     print("✅ xFormers enabled")
-                except Exception:
+                except:
                     print("⚠️ xFormers not available, using default attention")
+                
+                # 不使用torch.compile，因为它在ZeroGPU环境中不稳定
                 print("ℹ️ Skipping torch.compile for ZeroGPU compatibility")
+                
             except Exception as opt_error:
                 print(f"⚠️ Optimization warning: {opt_error}")
-
+        
+        # 初始化Compel用于长提示词
         if COMPEL_AVAILABLE:
             try:
                 compel_processor = Compel(
@@ -220,13 +185,11 @@ def initialize_model(model_filename: str):
             except Exception as compel_error:
                 print(f"⚠️ Compel initialization failed: {compel_error}")
                 compel_processor = None
-
-        current_model_name = model_filename
-        current_model_path = model_path
+        
         model_loaded = True
-        print(f"✅ Local model initialization complete: {model_filename}")
+        print("✅ Kageillustrious model initialization complete")
         return True
-
+        
     except Exception as e:
         print(f"❌ Model loading error: {e}")
         print(traceback.format_exc())
@@ -360,21 +323,18 @@ def cleanup_pipeline():
 def generate_image(prompt: str, style: str, negative_prompt: str = "",
                    steps: int = 20, cfg_scale: float = 6.0,
                    seed: int = -1, width: int = 896, height: int = 1152,
-                   model_name: str = None,
                    progress=gr.Progress()):
-    """图像生成主函数 - 使用选择的本地模型进行生成"""
+    """图像生成主函数 - 使用Kageillustrious推荐参数"""
     
     # 验证输入
     if not prompt or prompt.strip() == "":
         return None, "", "❌ Please enter a prompt"
-    if not model_name:
-        return None, "", "❌ Please select a local model"
     
     progress(0.05, desc="Initializing...")
     
     # 初始化模型
-    if not initialize_model(model_name):
-        return None, "", "❌ Failed to load selected model"
+    if not initialize_model():
+        return None, "", "❌ Failed to load model"
     
     # 清理之前的状态
     cleanup_pipeline()
@@ -464,7 +424,7 @@ def generate_image(prompt: str, style: str, negative_prompt: str = "",
             width, height, style
         )
         
-        generation_info = f"Model: {model_name} | Style: {style} | Seed: {seed} | Size: {width}×{height} | Steps: {steps} | CFG: {cfg_scale}"
+        generation_info = f"Style: {style} | Seed: {seed} | Size: {width}×{height} | Steps: {steps} | CFG: {cfg_scale}"
         
         # 生成后立即清理
         if torch.cuda.is_available():
@@ -490,22 +450,6 @@ def generate_image(prompt: str, style: str, negative_prompt: str = "",
 
 # ===== CSS样式 =====
 css = """
-.gradio-container {overflow-y: auto !important; height: 100vh !important;}
-#gallery {min-height: 800px !important; overflow-y: visible !important;}
-.scroll-hide {overflow-y: auto !important;}
-
-.gradio-container {overflow-y: auto !important; height: 100vh !important;}
-#gallery {min-height: 800px !important; overflow-y: visible !important;}
-.scroll-hide {overflow-y: auto !important;}
-
-.gradio-container {overflow-y: auto !important;}
-#gallery {min-height: 800px !important;}
-.scroll-hide {overflow-y: auto !important;}
-
-.gradio-container {overflow-y: auto !important;}
-#gallery {min-height: 800px !important;}
-.scroll-hide {overflow-y: auto !important;}
-
 .gradio-container {
     max-width: 100% !important;
     margin: 0 !important;
@@ -695,18 +639,6 @@ def create_interface():
                 
                 with gr.Column(scale=1):
                     with gr.Group(elem_classes=["controls-section"]):
-                        model_input = gr.Dropdown(
-                            label="Choose Local Model",
-                            choices=LOCAL_MODEL_CHOICES,
-                            value=LOCAL_MODEL_CHOICES[0] if LOCAL_MODEL_CHOICES else None,
-                            interactive=True
-                        )
-                        if not LOCAL_MODEL_CHOICES:
-                            gr.HTML(
-                                f'<div class="warning-box">⚠️ No local models found in <code>{LOCAL_MODEL_DIRECTORY}</code>. Add .safetensors files or set LOCAL_SD_MODEL_DIR.</div>'
-                            )
-                    
-                    with gr.Group(elem_classes=["controls-section"]):
                         style_input = gr.Radio(
                             label="Style Preset",
                             choices=list(STYLE_KEYWORDS.keys()),
@@ -791,9 +723,9 @@ def create_interface():
                     visible=False
                 )
             
-            def on_generate(prompt, style, neg_prompt, steps, cfg, seed, width, height, model_name):
+            def on_generate(prompt, style, neg_prompt, steps, cfg, seed, width, height):
                 image, info, metadata = generate_image(
-                    prompt, style, neg_prompt, steps, cfg, seed, width, height, model_name
+                    prompt, style, neg_prompt, steps, cfg, seed, width, height
                 )
                 
                 if image is not None:
@@ -816,7 +748,7 @@ def create_interface():
             generate_button.click(
                 fn=on_generate,
                 inputs=[
-                    prompt_input, model_input, style_input, negative_prompt_input,
+                    prompt_input, style_input, negative_prompt_input,
                     steps_input, cfg_input, seed_input, width_input, height_input
                 ],
                 outputs=[
@@ -829,7 +761,7 @@ def create_interface():
             prompt_input.submit(
                 fn=on_generate,
                 inputs=[
-                    prompt_input, model_input, style_input, negative_prompt_input,
+                    prompt_input, style_input, negative_prompt_input,
                     steps_input, cfg_input, seed_input, width_input, height_input
                 ],
                 outputs=[
@@ -846,8 +778,8 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("🚀 Starting ADULT AI Image Generator (YAOI Friendly) ")
     print("="*50)
-    print(f"� Local model directory: {LOCAL_MODEL_DIRECTORY}")
-    print(f"📄 Available local models: {', '.join(LOCAL_MODEL_CHOICES) if LOCAL_MODEL_CHOICES else 'NONE FOUND'}")
+    print(f"📦 Model: {FIXED_MODEL_REPO}")
+    print(f"📄 Model File: {FIXED_MODEL_FILE}")
     print(f"🖥️ Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
     print(f"⚡ ZeroGPU: {'Enabled' if SPACES_AVAILABLE else 'Disabled'}")
     print(f"📝 Compel: {'Available' if COMPEL_AVAILABLE else 'Not Available'}")
@@ -861,5 +793,8 @@ if __name__ == "__main__":
     app = create_interface()
     app.queue(max_size=10, default_concurrency_limit=2)
     
-    app.launch(server_name="0.0.0.0",
-        server_port=7860, share=True)
+    app.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False
+    )
