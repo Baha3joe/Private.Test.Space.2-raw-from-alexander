@@ -1,0 +1,21 @@
+ΓÜá∩╕Å Spaces not available - running in regular mode
+2026-05-16 18:12:52.886593: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-05-16 18:13:11.504646: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+Γ£à Compel available for long prompt processing
+
+==================================================
+≡ƒÜÇ Starting ADULT AI Image Generator (YAOI Friendly) 
+==================================================
+≡ƒôé Local model directory: G:\My Drive\sd\stable-diffusion-webui\models\Stable-diffusion
+≡ƒôä Available local models: Cartoonish.safetensors, add-micro-details-concept-illustrious-or-pony-or-noobai.safetensors, ass-ripple-also-known-.safetensors, kageillustrious_v60NLXLVersion.safetensors, nova-anime-xl.safetensors, nova-furry-xl.safetensors, nova-orange-xl.safetensors, novaAnimeXL.safetensors, ntrnetorare.safetensors, ramthrusts-nsfw-pink-alchemy-mix.safetensors, wai-illustrious-sdxl.safetensors
+≡ƒûÑ∩╕Å Device: CPU
+ΓÜí ZeroGPU: Disabled
+≡ƒô¥ Compel: Available
+≡ƒÄ¿ LoRA: LogoRedmond-LogoLoraForSDXL-V2 (scale: 0.8)
+==================================================
+
+≡ƒÜ¬ Launching Gradio on port: 62173
+* Running on local URL:  http://0.0.0.0:62173
+* Running on public URL: https://b4d65e015773a6fbb5.gradio.live
+
+This share link expires in 1 week. For free permanent hosting and GPU upgrades, run `gradio deploy` from the terminal in the working directory to deploy to Hugging Face Spaces (https://huggingface.co/spaces)

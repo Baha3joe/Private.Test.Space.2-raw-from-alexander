@@ -16,6 +16,7 @@ except ImportError:
 
 # ===== 其他导入 =====
 import os
+import socket
 import uuid
 from datetime import datetime
 import random
@@ -81,6 +82,22 @@ SUPPORTED_MODEL_EXTENSIONS = [".safetensors", ".ckpt"]
 
 current_model_name = None
 current_model_path = None
+
+
+def get_server_port(default_port: int = 7860) -> int:
+    try:
+        requested_port = int(os.environ.get("GRADIO_SERVER_PORT", default_port))
+    except ValueError:
+        requested_port = default_port
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("0.0.0.0", requested_port))
+            return requested_port
+        except OSError:
+            sock.bind(("0.0.0.0", 0))
+            return sock.getsockname()[1]
 
 # 本地模型扫描
 
@@ -360,7 +377,7 @@ def cleanup_pipeline():
 def generate_image(prompt: str, style: str, negative_prompt: str = "",
                    steps: int = 20, cfg_scale: float = 6.0,
                    seed: int = -1, width: int = 896, height: int = 1152,
-                   model_name: str = None,
+                   model_name: str = None, num_images: int = 1,
                    progress=gr.Progress()):
     """图像生成主函数 - 使用选择的本地模型进行生成"""
     
@@ -382,50 +399,72 @@ def generate_image(prompt: str, style: str, negative_prompt: str = "",
     progress(0.1, desc="Processing prompt...")
     
     try:
-        # 处理seed
+        # prepare seeds for each image
         if seed == -1:
-            seed = random.randint(0, np.iinfo(np.int32).max)
-        
-        # 重要：为每次生成创建新的 generator，避免状态污染
-        generator = torch.Generator(device).manual_seed(seed)
-        
+            seeds = [random.randint(0, np.iinfo(np.int32).max) for _ in range(max(1, num_images))]
+        else:
+            seeds = [int(seed) + i for i in range(max(1, num_images))]
+
         # 增强提示词
         enhanced_prompt = enhance_prompt(prompt, style)
-        
+
         # 构建负面提示词
         final_negative = build_negative_prompt(style, negative_prompt)
         
         print(f"🔧 Generation params: seed={seed}, steps={steps}, cfg={cfg_scale}, size={width}x{height}")
         print(f"📝 Prompt preview: {enhanced_prompt[:100]}...")
         
-        progress(0.2, desc="Generating image...")
+        progress(0.2, desc="Generating images...")
         
         # 检查提示词长度并决定是否使用Compel
         prompt_length = len(enhanced_prompt.split())
         use_compel = prompt_length > 50 and compel_processor is not None
         
+        images = []
+
         if use_compel:
             print(f"📏 Long prompt detected ({prompt_length} words), using Compel")
             conditioning, pooled = process_with_compel(enhanced_prompt, final_negative)
             
             if conditioning is not None:
                 # 使用embeddings生成
-                result = pipeline(
-                    prompt_embeds=conditioning[0:1],
-                    pooled_prompt_embeds=pooled[0:1],
-                    negative_prompt_embeds=conditioning[1:2],
-                    negative_pooled_prompt_embeds=pooled[1:2],
-                    num_inference_steps=steps,
-                    guidance_scale=cfg_scale,
-                    width=width,
-                    height=height,
-                    generator=generator,
-                    output_type="pil"
-                ).images[0]
+                for idx in range(len(seeds)):
+                    generator = torch.Generator(device).manual_seed(seeds[idx])
+                    out = pipeline(
+                        prompt_embeds=conditioning[0:1],
+                        pooled_prompt_embeds=pooled[0:1],
+                        negative_prompt_embeds=conditioning[1:2],
+                        negative_pooled_prompt_embeds=pooled[1:2],
+                        num_inference_steps=steps,
+                        guidance_scale=cfg_scale,
+                        width=width,
+                        height=height,
+                        generator=generator,
+                        output_type="pil"
+                    ).images[0]
+                    images.append(out)
             else:
                 # Compel失败,回退到普通模式
                 print("⚠️ Falling back to standard generation")
-                result = pipeline(
+                for idx in range(len(seeds)):
+                    generator = torch.Generator(device).manual_seed(seeds[idx])
+                    out = pipeline(
+                        prompt=enhanced_prompt,
+                        negative_prompt=final_negative,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg_scale,
+                        width=width,
+                        height=height,
+                        generator=generator,
+                        output_type="pil"
+                    ).images[0]
+                    images.append(out)
+        else:
+            # 标准生成
+            print(f"📝 Standard generation ({prompt_length} words)")
+            for idx in range(len(seeds)):
+                generator = torch.Generator(device).manual_seed(seeds[idx])
+                out = pipeline(
                     prompt=enhanced_prompt,
                     negative_prompt=final_negative,
                     num_inference_steps=steps,
@@ -435,36 +474,26 @@ def generate_image(prompt: str, style: str, negative_prompt: str = "",
                     generator=generator,
                     output_type="pil"
                 ).images[0]
-        else:
-            # 标准生成
-            print(f"📝 Standard generation ({prompt_length} words)")
-            result = pipeline(
-                prompt=enhanced_prompt,
-                negative_prompt=final_negative,
-                num_inference_steps=steps,
-                guidance_scale=cfg_scale,
-                width=width,
-                height=height,
-                generator=generator,
-                output_type="pil"
-            ).images[0]
+                images.append(out)
         
         progress(0.95, desc="Finalizing...")
         
         # 确保结果是PIL Image
-        if not isinstance(result, Image.Image):
-            if isinstance(result, np.ndarray):
-                if result.dtype != np.uint8:
-                    result = (result * 255).astype(np.uint8)
-                result = Image.fromarray(result)
+        for i, res in enumerate(images):
+            if not isinstance(res, Image.Image):
+                if isinstance(res, np.ndarray):
+                    if res.dtype != np.uint8:
+                        res = (res * 255).astype(np.uint8)
+                    res = Image.fromarray(res)
+                images[i] = res
         
         # 创建元数据
         metadata = create_metadata_content(
-            prompt, enhanced_prompt, seed, steps, cfg_scale,
+            prompt, enhanced_prompt, seeds[0] if seeds else -1, steps, cfg_scale,
             width, height, style
         )
-        
-        generation_info = f"Model: {model_name} | Style: {style} | Seed: {seed} | Size: {width}×{height} | Steps: {steps} | CFG: {cfg_scale}"
+
+        generation_info = f"Model: {model_name} | Style: {style} | Seeds: {', '.join(str(s) for s in seeds)} | Size: {width}×{height} | Steps: {steps} | CFG: {cfg_scale}"
         
         # 生成后立即清理
         if torch.cuda.is_available():
@@ -473,7 +502,7 @@ def generate_image(prompt: str, style: str, negative_prompt: str = "",
         progress(1.0, desc="Complete!")
         print("✅ Generation successful\n")
         
-        return result, generation_info, metadata
+        return images, generation_info, metadata
         
     except Exception as e:
         error_msg = str(e)
@@ -699,7 +728,8 @@ def create_interface():
                             label="Choose Local Model",
                             choices=LOCAL_MODEL_CHOICES,
                             value=LOCAL_MODEL_CHOICES[0] if LOCAL_MODEL_CHOICES else None,
-                            interactive=True
+                            interactive=True,
+                            allow_custom_value=False
                         )
                         if not LOCAL_MODEL_CHOICES:
                             gr.HTML(
@@ -758,6 +788,15 @@ def create_interface():
                             step=0.1,
                             info="Recommended: 6.0"
                         )
+
+                        num_images_input = gr.Slider(
+                            label="Number of Images",
+                            minimum=1,
+                            maximum=50,
+                            value=1,
+                            step=1,
+                            info="Generate multiple images (each with different seed)"
+                        )
                     
                     generate_button = gr.Button(
                         "GENERATE",
@@ -765,11 +804,12 @@ def create_interface():
                         variant="primary"
                     )
             
-            image_output = gr.Image(
-                label="Generated Image",
+            image_output = gr.Gallery(
+                label="Generated Images",
                 elem_classes=["image-output"],
                 show_label=False,
-                container=True
+                container=True,
+                columns=2
             )
             
             with gr.Row():
@@ -791,14 +831,14 @@ def create_interface():
                     visible=False
                 )
             
-            def on_generate(prompt, style, neg_prompt, steps, cfg, seed, width, height, model_name):
-                image, info, metadata = generate_image(
-                    prompt, style, neg_prompt, steps, cfg, seed, width, height, model_name
+            def on_generate(prompt, model_name, style, neg_prompt, steps, cfg, seed, num_images, width, height):
+                images, info, metadata = generate_image(
+                    prompt, style, neg_prompt, steps, cfg, seed, width, height, model_name, num_images
                 )
                 
                 if image is not None:
                     return (
-                        image,
+                        images,
                         info,
                         metadata,
                         gr.update(visible=True, value=info),
@@ -817,7 +857,7 @@ def create_interface():
                 fn=on_generate,
                 inputs=[
                     prompt_input, model_input, style_input, negative_prompt_input,
-                    steps_input, cfg_input, seed_input, width_input, height_input
+                    steps_input, cfg_input, seed_input, num_images_input, width_input, height_input
                 ],
                 outputs=[
                     image_output, generation_info, metadata_display,
@@ -830,7 +870,7 @@ def create_interface():
                 fn=on_generate,
                 inputs=[
                     prompt_input, model_input, style_input, negative_prompt_input,
-                    steps_input, cfg_input, seed_input, width_input, height_input
+                    steps_input, cfg_input, seed_input, num_images_input, width_input, height_input
                 ],
                 outputs=[
                     image_output, generation_info, metadata_display,
@@ -861,9 +901,12 @@ if __name__ == "__main__":
     app = create_interface()
     app.queue(max_size=10, default_concurrency_limit=2)
     
+    server_port = get_server_port(7860)
+    print(f"🚪 Launching Gradio on port: {server_port}")
+
     app.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=server_port,
         share=True,
         css=css
     )
