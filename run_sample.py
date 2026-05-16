@@ -1,4 +1,4 @@
-from app import get_local_models, initialize_model, generate_image
+from app import LOCAL_MODEL_DIRECTORY, get_local_models, initialize_model, generate_image
 import os
 
 models = get_local_models()
@@ -6,7 +6,21 @@ if not models:
     print('No local models found')
     raise SystemExit(1)
 
-model = models[0]
+models_with_size = []
+for model_name in models:
+    model_path = os.path.join(LOCAL_MODEL_DIRECTORY, model_name)
+    try:
+        size = os.path.getsize(model_path)
+    except OSError:
+        size = float('inf')
+    if size >= 50 * 1024 * 1024:
+        models_with_size.append((size, model_name))
+
+if not models_with_size:
+    print('No valid model files found with size >= 50MB')
+    raise SystemExit(1)
+
+model = min(models_with_size, key=lambda x: x[0])[1]
 print('Using model:', model)
 
 ok = initialize_model(model)

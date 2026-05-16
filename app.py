@@ -18,6 +18,7 @@ except ImportError:
 import os
 import socket
 import uuid
+import importlib.util
 from datetime import datetime
 import random
 import torch
@@ -104,12 +105,19 @@ def get_server_port(default_port: int = 7860) -> int:
 def get_local_models():
     if not os.path.isdir(LOCAL_MODEL_DIRECTORY):
         return []
-    return sorted(
-        [
-            filename for filename in os.listdir(LOCAL_MODEL_DIRECTORY)
-            if os.path.splitext(filename)[1].lower() in SUPPORTED_MODEL_EXTENSIONS
-        ]
-    )
+    valid_files = []
+    for filename in os.listdir(LOCAL_MODEL_DIRECTORY):
+        extension = os.path.splitext(filename)[1].lower()
+        if extension not in SUPPORTED_MODEL_EXTENSIONS:
+            continue
+        file_path = os.path.join(LOCAL_MODEL_DIRECTORY, filename)
+        try:
+            if os.path.getsize(file_path) < 20 * 1024 * 1024:
+                continue
+        except OSError:
+            continue
+        valid_files.append(filename)
+    return sorted(valid_files)
 
 LOCAL_MODEL_CHOICES = get_local_models()
 
@@ -160,6 +168,19 @@ def initialize_model(model_filename: str):
         print(f"📦 Loading local model from: {model_path}")
 
         tried_low_mem = False
+        use_accelerate = importlib.util.find_spec('accelerate') is not None
+        low_mem_kwargs = {
+            'torch_dtype': torch.float16 if torch.cuda.is_available() else torch.float32,
+            'safety_checker': None,
+            'requires_safety_checker': False
+        }
+        if use_accelerate:
+            low_mem_kwargs.update({
+                'device_map': 'auto',
+                'offload_folder': 'offload',
+                'low_cpu_mem_usage': True
+            })
+
         try:
             pipeline = StableDiffusionXLPipeline.from_single_file(
                 model_path,
@@ -177,11 +198,8 @@ def initialize_model(model_filename: str):
                 tried_low_mem = True
                 pipeline = StableDiffusionXLPipeline.from_single_file(
                     model_path,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
                     use_safetensors=True,
-                    safety_checker=None,
-                    requires_safety_checker=False,
-                    low_cpu_mem_usage=True
+                    **low_mem_kwargs
                 )
                 print("✅ Loaded SDXL pipeline with low-memory options")
             except Exception as lowmem_err:
@@ -202,10 +220,7 @@ def initialize_model(model_filename: str):
                         if not tried_low_mem:
                             pipeline = StableDiffusionPipeline.from_single_file(
                                 model_path,
-                                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                                safety_checker=None,
-                                requires_safety_checker=False,
-                                low_cpu_mem_usage=True
+                                **low_mem_kwargs
                             )
                             print("✅ Loaded standard pipeline with low-memory options")
                     except Exception as final_err:
@@ -222,6 +237,10 @@ def initialize_model(model_filename: str):
                 pipeline.scheduler.config,
                 timestep_spacing="trailing"
             )
+
+        if pipeline is None:
+            print("❌ No pipeline object created, aborting model initialization")
+            return False
 
         pipeline = pipeline.to(device)
 
