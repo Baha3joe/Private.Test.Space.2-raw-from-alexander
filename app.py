@@ -81,6 +81,17 @@ LOCAL_MODEL_DIRECTORY = os.environ.get(
 )
 SUPPORTED_MODEL_EXTENSIONS = [".safetensors", ".ckpt"]
 
+RANDOM_PROMPTS = [
+    "1girl, fantasy city at night, neon lights, detailed eyes, cinematic lighting",
+    "1boy, solo, forest clearing, soft lighting, highly detailed, realistic skin",
+    "couple, cozy bedroom, warm atmosphere, expressive eyes, perfect anatomy",
+    "anime style, elegant outfit, flowing hair, dynamic pose, dramatic lighting",
+    "portrait, close-up face, sharp focus, beautiful makeup, shiny hair"
+]
+
+def get_random_prompt():
+    return random.choice(RANDOM_PROMPTS)
+
 current_model_name = None
 current_model_path = None
 
@@ -769,6 +780,7 @@ def create_interface():
                     prompt_input = gr.Textbox(
                         label="Detailed Prompt (Use Danbooru tags style)",
                         placeholder="1boy, solo, messy hair, blue eyes, detailed face, handsome...",
+                        value=get_random_prompt(),
                         lines=15,
                         elem_classes=["prompt-box"]
                     )
